@@ -7,6 +7,7 @@ Input:
 * Fasta file of assembled genome from IRMA assembly module.
 
 Output:
+* BLAST analysis of each segment against the NAIWB database (plus NCBI?).
 * Cleavage site location in the HA segment (e.g., 758 - 823).
 * Is this a novel cleavage sequence or have we seen it previously?
 * Influenza pathotype (e.g., high path or low path).
