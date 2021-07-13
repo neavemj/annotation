@@ -11,6 +11,7 @@ Output:
 * translated amino acid sequences
 * Cleavage site location in the HA segment (e.g., 758 - 823).
 * Is this a novel cleavage sequence or have we seen it previously?
+    * little barchart showing relative abundance of cleavage sequences over time in the NAIWB data?
 * Influenza pathotype (e.g., high path or low path).
 * Influenza subtype (e.g., H7N7)
 
