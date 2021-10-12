@@ -22,3 +22,47 @@ rule graph_workflow:
         cmd = utils.graph_workflow(input.snakefile, output.imgfile, config)
         shell(cmd)
 
+
+rule make_translation:
+    input:
+        fasta="fasta/{wildcard}.fasta"
+    output:
+        ""
+    run:
+        ""
+
+
+rule identify_serotype:
+    input:
+        ""
+    output:
+        ""
+    run:
+        ""
+
+
+rule identify_cleavage_site:
+    input:
+        ""
+    output:
+        ""
+    run:
+        ""
+
+
+rule identify_pathotype:
+    input:
+        ""
+    output:
+        ""
+    run:
+        ""
+
+
+rule run_blast:
+    input:
+        ""
+    output:
+        ""
+    run:
+        ""
