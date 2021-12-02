@@ -14,11 +14,12 @@ import re
 
 # 3rd party modules
 from Bio import SeqIO, Entrez
+from Bio.SeqRecord import SeqRecord
 import pandas as pd
 
 # custom modules
 import findorf
-#import alignfunctions
+from alignfunctions import globalAlignment as align
 
 __version__ = 1.0
 
@@ -38,7 +39,7 @@ def blast(args, fasta):
     fields = 'qseqid sseqid qlen slen pident length mismatch gapopen qstart qend sstart send evalue bitscore'# qseq sseq'
     
     record = SeqIO.read(fasta, 'fasta')
-    
+        
     p = subprocess.run([
         args.program, 
         '-db', args.db, 
@@ -99,35 +100,44 @@ def analyse(args):
         segment = basename.split("_")[1]
         record = SeqIO.read(fasta, 'fasta')
         orf = findorf.findORF(record)
-        peptide = str(orf.translate())
+        peptide = orf.translate()
+                
+        peptide_record = SeqRecord(
+            peptide,
+            id=record.id,
+            name=record.name,
+            description=record.description,
+            )
         
+        with open("%s/%s.aa.fasta" % (args.output_dir, basename), 'w') as handle:
+            SeqIO.write(peptide_record, handle, "fasta")
+                
         # blast analysis
         blastresults = blast(args, fasta)
         blastresults.to_csv("%s/%s.blast.csv" % (args.output_dir, basename))
         
-#        with Entrez.efetch(
-#                db="nucleotide", rettype="gb", retmode="text", 
-#                id=blastresults["sseqid"].iloc[0]) as handle:
-#            top_hit = SeqIO.read(handle, "gb") 
-#        
-#        aln = alignfunctions(record, top_hit)
-#        
-#        with open("%s/%s.aln.fasta" % (args.output_dir, basename), 'w') as F:
-#            SeqIO.write(aln, handle, "fasta")
+        with Entrez.efetch(
+                db="nucleotide", rettype="gb", retmode="text", 
+                id=blastresults["sseqid"].iloc[0]) as handle:
+            top_hit = SeqIO.read(handle, "gb")
         
+        aln = align(top_hit, record)
+        
+        if aln:        
+            with open("%s/%s.aligned.%s" % (args.output_dir, basename, args.aln_format), 'w') as handle:
+                SeqIO.write(aln, handle, args.aln_format)
+        else: # this happens if the test seq is identical to the refseq
+            pass
         
         # cleavage site prediction
         if segment == "HA": # haemagglutinin
             try:
-                cs , start, end, length = findCleavageSite(peptide)
-                with open("%s/%s.cs.txt" % (args.output_dir, basename), 'w') as F:
-                    F.write(" ".join([str(s) for s in [cs , start, end, length]]))
+                cs , start, end, length = findCleavageSite(str(peptide))
+                with open("%s/%s.cs.txt" % (args.output_dir, basename), 'w') as handle:
+                    handle.write(" ".join([str(s) for s in [cs , start, end, length]]))
             except ValueError:
                 print("cs not found")
         
-        
-        
-
 
 def argParser():
     """
@@ -138,6 +148,7 @@ def argParser():
     parser.add_argument('-email', required=True, help = 'user email for NCBI queries')
     parser.add_argument('-program', default='tblastx', help = 'which blast program to run?')
     parser.add_argument('-db', default="influenza_A_genbank", help = 'which database to search?')
+    parser.add_argument('-aln_format', default="fasta", help = 'in which format to report alignments?')
     return parser
 
             
@@ -147,7 +158,7 @@ def main():
     args = argParser().parse_args([
 #            "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0001/FLU-avian-acdp/irma_output",
             "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0003/FLU-avian-acdp/irma_output",
-            "-output_dir", "C:/Users/cow082/aivpipe/blastresults",
+            "-output_dir", "C:/Users/cow082/aivpipe/blastresults_021221",
             "-email", "cow082@csiro.au",
             ])
     
