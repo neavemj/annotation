@@ -23,15 +23,17 @@ from blastfunctions import processName
 __version__ = 1.0
 
 
-def findCleavageSite(record):
+def findCleavageSite(peptide):
     """using regex, return the probable cleavage site sequence and its coordinates
     """
-    pep = findorf.findORF(record).translate()
-    pattern = re.compile('N[V,I][H,R,P,L,Q].{1,15}G[L,I]F')
-    match = pattern.search(str(pep))
+#    pattern = re.compile('N[V,E,I,S,T,P,L].{1,15}G[L,I]F')
+    
+    pattern = re.compile('P[E,Q,L,S,A,F,R,G].{1,20}(GLF|GFF|GIF|GLL)')
+        
+    match = pattern.search(peptide)
     start, end = match.span()
     if match:
-        return match.group()[2:], start+2, end, len(pep)
+        return match.group()[2:], start+2, end, len(peptide)
 
 
 def findSubType(s):
@@ -136,7 +138,8 @@ def test2():
         for i, record in enumerate(records):
 #            if i > 100: return
             try:
-                cleavage_site, start, end, length = findCleavageSite(record)
+                peptide = str(findorf.findORF(record).translate())
+                cleavage_site, start, end, length = findCleavageSite(peptide)
 #                print(record.name, cleavage_site, start, end, length)
                 F.write(','.join([record.name, cleavage_site, str(start), str(end), str(length), record.description])+'\n')
                 yes += 1
@@ -168,10 +171,11 @@ def test3():
             for i, record in enumerate(records):
                 if isIn(record.description, tags):
                     try:
-                        cleavage_site, start, end, length = findCleavageSite(record)
+                        peptide = str(findorf.findORF(record).translate())
+                        cleavage_site, start, end, length = findCleavageSite(peptide)
                         F.write(','.join([record.name, cleavage_site, str(start), str(end), str(length), record.description])+'\n')
                         yes += 1
-                    except Exception:
+                    except AttributeError:
                         no += 1
                 else:
                     notHA += 1
@@ -420,7 +424,8 @@ def test8():
     for i, record in enumerate(records):
         if record.id in overlap:
             try:
-                cleavage_site, start, end, length = findCleavageSite(record)
+                peptide = str(findorf.findORF(record).translate(gap="x"))
+                cleavage_site, start, end, length = findCleavageSite(peptide)
                 if cleavage_site:
 #                    print(cleavage_site)
                     sites.append(cleavage_site)
@@ -593,6 +598,90 @@ def test12():
     
     print(count)
 
+
+def test13():
+    """same as test3 but for Australian wild bird dataset
+    """
+    
+    # input
+    pwd = "C:/Users/cow082/aivpipe"
+    fasta = "%s/ACDP_AIV_HA_2021-10-12.fasta" % pwd
+    
+    # output
+    sites = '%s/aus_wild_birds_cleavage_sites_06.12.2021.csv' % pwd
+
+#    tags = ['hemagglutinin', 'haemagglutinin', 'segment 4', '(HA)', 'HA gene', 'H gene']
+    fields = ['accession', 'cleavage_site', 'start', 'end', 'segment_length', 'description']
+    yes, no, = 0, 0
+    
+    with open(sites, 'w') as F:
+        F.write(','.join(fields)+'\n')
+        records = SeqIO.parse(fasta, 'fasta')
+        for i, record in enumerate(records):
+            try:
+                peptide = str(findorf.findORF(record).translate())
+                cleavage_site, start, end, length = findCleavageSite(peptide)
+                F.write(','.join([record.name, cleavage_site, str(start), str(end), str(length), record.description])+'\n')
+#                print(cleavage_site)
+                yes += 1
+            except Exception:
+                for peptide in [translate(str(record.seq[i:])) for i in range(3)]:
+                    try:
+                        cleavage_site, start, end, length = findCleavageSite(peptide)
+                        yes += 1
+                        
+                    except AttributeError:
+                        no += 1
+                        if "GLF" in peptide:
+                            glf = peptide.index("GLF")
+                            print(peptide[glf-15:glf+3])
+                        elif "GIF" in peptide:
+                            gif = peptide.index("GIF")
+                            print(peptide[gif-15:gif+3])
+                        elif "GFF" in peptide:
+                            gff = peptide.index("GFF")
+                            print(peptide[gff-15:gff+3])
+                        elif "GLL" in peptide:
+                            gll = peptide.index("GLL")
+                            print(peptide[gll-15:gll+3])
+                            
+                    # LRNSSQRERRRRKKRGLF seems to be the only legit sequence left
+            
+    print('\n'.join([
+        "yes: %d" % yes, 
+        "no: %d" % no, 
+        ]))
+
+
+def translate(seq):
+    """manual translation (error tollerant)
+    """
+    table = {
+        'ATA':'I', 'ATC':'I', 'ATT':'I', 'ATG':'M',
+        'ACA':'T', 'ACC':'T', 'ACG':'T', 'ACT':'T',
+        'AAC':'N', 'AAT':'N', 'AAA':'K', 'AAG':'K',
+        'AGC':'S', 'AGT':'S', 'AGA':'R', 'AGG':'R',                
+        'CTA':'L', 'CTC':'L', 'CTG':'L', 'CTT':'L',
+        'CCA':'P', 'CCC':'P', 'CCG':'P', 'CCT':'P',
+        'CAC':'H', 'CAT':'H', 'CAA':'Q', 'CAG':'Q',
+        'CGA':'R', 'CGC':'R', 'CGG':'R', 'CGT':'R',
+        'GTA':'V', 'GTC':'V', 'GTG':'V', 'GTT':'V',
+        'GCA':'A', 'GCC':'A', 'GCG':'A', 'GCT':'A',
+        'GAC':'D', 'GAT':'D', 'GAA':'E', 'GAG':'E',
+        'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G',
+        'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S',
+        'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L',
+        'TAC':'Y', 'TAT':'Y', 'TAA':'*', 'TAG':'*',
+        'TGC':'C', 'TGT':'C', 'TGA':'*', 'TGG':'W',
+    }
+    protein =""
+    if len(seq) % 3 == 0:
+        for i in range(0, len(seq), 3):
+            codon = seq[i:i+3]
+            protein += table.get(codon, 'X')
+    return protein
+
+
 def main():
     """
     """
@@ -608,6 +697,7 @@ def main():
 #    test10() # ok
 #    test11() # ok
 #    test12() # ok
+    test13()
     
 
 if __name__ == "__main__":

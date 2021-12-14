@@ -23,6 +23,10 @@ from alignfunctions import globalAlignment as align
 
 __version__ = 1.0
 
+cs_ref_data = pd.read_csv("extended_info.csv")
+known_sites = set(cs_ref_data["cleavage_site"])
+known_sites = set([s for s in known_sites if isinstance(s, str)])
+
 
 def recordToFastaString(record):
     """convert a seqrecord to a fasta string
@@ -78,11 +82,14 @@ def findCleavageSite(s):
     
     s <str> is an amino acid sequence
     """
+    for site in known_sites:
+        if site in s:
+            return site, s.index(site), s.index(site)+len(site), len(s), cs_ref_data["cleavage_site"].count(site)
     pattern = re.compile('N[V,I][H,R,P,L,Q].{1,15}G[L,I]F')
     match = pattern.search(s)
     start, end = match.span()
     if match:
-        return match.group()[2:], start+2, end, len(s)
+        return match.group()[2:], start+2, end, len(s), 0
 
 
 def analyse(args):
@@ -126,15 +133,15 @@ def analyse(args):
         if aln:        
             with open("%s/%s.aligned.%s" % (args.output_dir, basename, args.aln_format), 'w') as handle:
                 SeqIO.write(aln, handle, args.aln_format)
-        else: # this happens if the test seq is identical to the refseq
+        else: # this might happen if the test seq is identical to the refseq
             pass
         
         # cleavage site prediction
         if segment == "HA": # haemagglutinin
             try:
-                cs , start, end, length = findCleavageSite(str(peptide))
+                cs , start, end, length, matches = findCleavageSite(str(peptide))
                 with open("%s/%s.cs.txt" % (args.output_dir, basename), 'w') as handle:
-                    handle.write(" ".join([str(s) for s in [cs , start, end, length]]))
+                    handle.write(" ".join([str(s) for s in [cs , start, end, length, matches]]))
             except ValueError:
                 print("cs not found")
         
@@ -151,19 +158,28 @@ def argParser():
     parser.add_argument('-aln_format', default="fasta", help = 'in which format to report alignments?')
     return parser
 
-            
-def main():
+
+def test():
     """
     """
     args = argParser().parse_args([
-#            "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0001/FLU-avian-acdp/irma_output",
-            "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0003/FLU-avian-acdp/irma_output",
-            "-output_dir", "C:/Users/cow082/aivpipe/blastresults_021221",
+            "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0001/FLU-avian-acdp/irma_output",
+#            "-input_dir", "C:/Users/cow082/aivpipe/irma_assembly/datasets/21-02023-0003/FLU-avian-acdp/irma_output",
+            "-output_dir", "C:/Users/cow082/aivpipe/blastresults_061221b",
             "-email", "cow082@csiro.au",
             ])
+    
+    analyse(args)
+
+
+def main():
+    """
+    """
+    args = argParser().parse_args()
     
     analyse(args)
     
 
 if __name__ == "__main__":
-    main()
+    test()
+#    main()

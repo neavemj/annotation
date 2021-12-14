@@ -29,10 +29,12 @@ def findORF(record):
         return S        
     
     def removeGaps(S):
-        '''avoids translation error if seq contains e.g. '---' codons'''
-        return Seq(str(S).replace('-', ''))
+        '''avoid translation errors
+        e.g. if seq contains codons such as --- or xxx '''
+        return Seq(str(S).upper().replace('-', '').replace('X', 'N'))
 
     sequence = str(removeGaps(record.seq))
+    record.seq
     
     if not 'ATG' in sequence:
         return '' # no ATG --> no ORF
@@ -51,7 +53,7 @@ def findORF(record):
     cds_start = longest[1]
     cds_end = longest[1]+len(longest[2])*3
     predicted_ORF = record[cds_start:cds_end].seq
-        
+    
     return predicted_ORF
 
 
