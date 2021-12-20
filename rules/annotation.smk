@@ -8,9 +8,9 @@ Created on Tue Aug 24 14:00:20 2021
 BASEDIR = workflow.basedir # this is full path to the snakefile itself
 
 
-rule all:
+rule annotation_all:
     input:
-        "graphics/rulegraph.png"
+        expand("02_irma_assembly/{sample}/annotation/", sample=config["samples"])
         
 
 rule graph_workflow:
@@ -23,46 +23,27 @@ rule graph_workflow:
         shell(cmd)
 
 
-rule make_translation:
+rule run_annotation:
+    message:
+        """
+        ** annotation **
+        Blasting and finding cleavage site
+        """
     input:
-        fasta="fasta/{wildcard}.fasta"
+       run_IRMA = "02_irma_assembly/{sample}/IRMA_COMPLETE",
+    params:
+       IRMA_dir = "02_irma_assembly/{sample}/irma_output/",
+       email = config["blast_email"],
+       database = config["blast_flu"],
     output:
-        ""
-    run:
-        ""
-
-
-rule identify_serotype:
-    input:
-        ""
-    output:
-        ""
-    run:
-        ""
-
-
-rule identify_cleavage_site:
-    input:
-        ""
-    output:
-        ""
-    run:
-        ""
-
-
-rule identify_pathotype:
-    input:
-        ""
-    output:
-        ""
-    run:
-        ""
-
-
-rule run_blast:
-    input:
-        ""
-    output:
-        ""
-    run:
-        ""
+       output_dir = directory("02_irma_assembly/{sample}/annotation/")
+    shell:
+        """
+		mkdir 02_irma_assembly/{wildcards.sample}/annotation
+		
+        python {config[program_dir]}annotation/rules/analyse.py \
+            -input_dir {params.IRMA_dir} \
+            -db {params.database} \
+            -output_dir {output.output_dir} \
+            -email {params.email}
+        """
