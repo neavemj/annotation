@@ -10,7 +10,7 @@ BASEDIR = workflow.basedir # this is full path to the snakefile itself
 
 rule annotation_all:
     input:
-        expand("02_irma_assembly/{sample}/annotation/", sample=config["samples"])
+        expand("03_annotation/{sample}/ANNOTATION_COMPLETE", sample=config["samples"])
         
 
 rule graph_workflow:
@@ -35,15 +35,34 @@ rule run_annotation:
        IRMA_dir = "02_irma_assembly/{sample}/irma_output/",
        email = config["blast_email"],
        database = config["blast_flu"],
+       known_cleavage_sites = config["cleavage_sites"],
+       output_dir = "03_annotation/{sample}/"
     output:
-       output_dir = directory("02_irma_assembly/{sample}/annotation/")
+       "03_annotation/{sample}/ANNOTATION_COMPLETE"
     shell:
         """
-		mkdir 02_irma_assembly/{wildcards.sample}/annotation
-		
+        # need to make a directory for the python script to put the output
+        # -p makes the command create multiple directory levels at once
+        mkdir -p 03_annotation/{wildcards.sample}/
+        
         python {config[program_dir]}annotation/rules/analyse.py \
             -input_dir {params.IRMA_dir} \
             -db {params.database} \
-            -output_dir {output.output_dir} \
+            -known_sites {params.known_cleavage_sites} \
+            -output_dir {params.output_dir} \
             -email {params.email}
+            
+        if [ "$?" == "0" ]; then
+            touch 03_annotation/{wildcards.sample}/ANNOTATION_COMPLETE
+        fi
         """
+        
+
+
+
+
+
+
+
+
+        

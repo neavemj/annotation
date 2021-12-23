@@ -23,10 +23,6 @@ from alignfunctions import globalAlignment as align
 
 __version__ = 1.0
 
-cs_ref_data = pd.read_csv("extended_info.csv")
-known_sites = set(cs_ref_data["cleavage_site"])
-known_sites = set([s for s in known_sites if isinstance(s, str)])
-
 
 def recordToFastaString(record):
     """convert a seqrecord to a fasta string
@@ -77,11 +73,12 @@ def blast(args, fasta):
     return data.iloc[:10] # top 10 hits
 
 
-def findCleavageSite(s):
+def findCleavageSite(s, known_sites):
     """using regex, return the probable cleavage site sequence and its coordinates
     
     s <str> is an amino acid sequence
     """
+   
     for site in known_sites:
         if site in s:
             return site, s.index(site), s.index(site)+len(site), len(s), cs_ref_data["cleavage_site"].count(site)
@@ -137,9 +134,14 @@ def analyse(args):
             pass
         
         # cleavage site prediction
+        # get list of known sites
+        cs_ref_data = pd.read_csv(args.known_sites)
+        known_sites = set(cs_ref_data["cleavage_site"])
+        known_sites = set([s for s in known_sites if isinstance(s, str)])
+        
         if segment == "HA": # haemagglutinin
             try:
-                cs , start, end, length, matches = findCleavageSite(str(peptide))
+                cs , start, end, length, matches = findCleavageSite(str(peptide), known_sites)
                 with open("%s/%s.cs.txt" % (args.output_dir, basename), 'w') as handle:
                     handle.write(" ".join([str(s) for s in [cs , start, end, length, matches]]))
             except ValueError:
@@ -155,6 +157,7 @@ def argParser():
     parser.add_argument('-email', required=True, help = 'user email for NCBI queries')
     parser.add_argument('-program', default='tblastx', help = 'which blast program to run?')
     parser.add_argument('-db', default="influenza_A_genbank", help = 'which database to search?')
+    parser.add_argument('-known_sites', default="extended_info.csv", help = 'file of known cleavage sites')
     parser.add_argument('-aln_format', default="fasta", help = 'in which format to report alignments?')
     return parser
 
