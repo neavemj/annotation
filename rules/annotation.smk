@@ -8,9 +8,9 @@ Created on Tue Aug 24 14:00:20 2021
 BASEDIR = workflow.basedir # this is full path to the snakefile itself
 
 
-rule annotation_all:
-    input:
-        expand("03_annotation/{sample}/ANNOTATION_COMPLETE", sample=config["samples"])
+#rule annotation_all:
+#    input:
+#        expand("03_annotation/{sample}/ANNOTATION_COMPLETE", sample=config["samples"])
         
 
 rule graph_workflow:
